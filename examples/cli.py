@@ -20,6 +20,7 @@
 # permissions and limitations under the Licence.
 # -----------------------------------------------------------------------------
 import logging
+
 log = logging.getLogger('main')
 
 import re
@@ -31,6 +32,7 @@ from operator import itemgetter
 
 import nfc
 
+
 def get_test_methods(object):
     test_methods = list()
     for name, func in inspect.getmembers(object, inspect.ismethod):
@@ -40,38 +42,43 @@ def get_test_methods(object):
             test_methods.append((line, name.lstrip("test_"), text))
     return test_methods
 
+
 class TestFail(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return str(self.value)
+
 
 class TestSkip(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return str(self.value)
+
 
 class CommandLineInterface(object):
     def __init__(self, argument_parser, groups=''):
         self.groups = groups.split()
         for group in self.groups:
             eval("self.add_{0}_options".format(group))(argument_parser)
-        
+
         argument_parser.add_argument(
             "-l", "--loop", action="store_true",
             help="restart after termination")
-        
+
         self.options = argument_parser.parse_args()
 
         lvl = logging.ERROR if self.options.quiet else logging.INFO
         if self.options.debug and not self.options.logfile:
             lvl = logging.DEBUG - (1 if self.options.verbose else 0)
-        
+
         fmt = '[%(name)s] %(message)s'
         if self.options.reltime: fmt = '%(relativeCreated)d ms ' + fmt
         if self.options.abstime: fmt = '%(asctime)s ' + fmt
-        
+
         ch = ColorStreamHandler()
         ch.setLevel(lvl)
         ch.setFormatter(logging.Formatter(fmt))
@@ -89,9 +96,9 @@ class CommandLineInterface(object):
         for module in self.options.debug:
             log.info("enable debug output for '{0}'".format(module))
             logging.getLogger(module).setLevel(1)
-        
+
         log.debug(self.options)
-        
+
         if "test" in self.groups:
             if self.options.test_all:
                 # get_test_method() yields a list of (line, name, docstr) tuples
@@ -101,7 +108,7 @@ class CommandLineInterface(object):
             if len(self.options.test) > 0 and self.options.select:
                 match = lambda name: re.match(self.options.select, name)
                 self.options.test = filter(match, self.options.test)
-        
+
     def add_dbg_options(self, argument_parser):
         group = argument_parser.add_argument_group(
             title="Debug Options")
@@ -124,7 +131,7 @@ class CommandLineInterface(object):
         group.add_argument(
             "--abstime", action="store_true",
             help="show absolute timestamps in screen log")
-        
+
     def add_llcp_options(self, argument_parser):
         group = argument_parser.add_argument_group(
             title="Peer Mode Options")
@@ -141,7 +148,7 @@ class CommandLineInterface(object):
             "--rwt", type=int, default=8, metavar='',
             help="DEP Response Waiting Time index (default: %(default)s)")
         group.add_argument(
-            "--mode", choices=["t","target","i","initiator"], metavar='',
+            "--mode", choices=["t", "target", "i", "initiator"], metavar='',
             help="connect as [t]arget or [i]nitiator (default: both)")
         group.add_argument(
             "--bitrate", type=int, default=424, metavar='',
@@ -179,20 +186,20 @@ class CommandLineInterface(object):
             title="Device Options")
         group.add_argument(
             "--device", metavar="PATH", action="append",
-            help="use contactless reader at: "\
-                "'usb[:vid[:pid]]' (with vendor and product id), "\
-                "'usb[:bus[:dev]]' (with bus and device number), "\
-                "'tty:port:driver' (with /dev/tty<port> and <driver>), "\
-                "'com:port:driver' (with COM<port> and <driver>), "\
-                "'udp[:host[:port]]' (with <host> name/addr and <port> number)")
-        
+            help="use contactless reader at: " \
+                 "'usb[:vid[:pid]]' (with vendor and product id), " \
+                 "'usb[:bus[:dev]]' (with bus and device number), " \
+                 "'tty:port:driver' (with /dev/tty<port> and <driver>), " \
+                 "'com:port:driver' (with COM<port> and <driver>), " \
+                 "'udp[:host[:port]]' (with <host> name/addr and <port> number)")
+
     def add_iop_options(self, argument_parser):
         group = argument_parser.add_argument_group(
             title="Interoperability Options")
         group.add_argument(
             "--quirks", action="store_true",
             help="support non-compliant implementations")
-        
+
     def add_test_options(self, argument_parser):
         group = argument_parser.add_argument_group(
             title="Test options")
@@ -205,9 +212,9 @@ class CommandLineInterface(object):
         group.add_argument(
             "--select", metavar="REGEX",
             help="from schedule select tests matching REGEX")
-        
+
         test_name_and_text, max_name_length = list(), 0
-        for line,name,text in sorted(get_test_methods(self), key=itemgetter(0)):
+        for line, name, text in sorted(get_test_methods(self), key=itemgetter(0)):
             test_name_and_text.append((name, text.splitlines()[0]))
             max_name_length = max(max_name_length, len(name))
 
@@ -215,7 +222,7 @@ class CommandLineInterface(object):
         for name, text in test_name_and_text:
             argument_parser.description += '  {0}   {1}\n'.format(
                 name.ljust(max_name_length), text)
-        
+
     def on_rdwr_startup(self, targets):
         return targets
 
@@ -228,7 +235,7 @@ class CommandLineInterface(object):
             log.error("no test specified")
             return None
         return llc
-    
+
     def on_llcp_connect(self, llc):
         if "test" in self.groups:
             self.test_completed = False
@@ -266,8 +273,10 @@ class CommandLineInterface(object):
                 log.error("invalid test '{0}'".format(test))
                 continue
             test_info = test_func.__doc__.splitlines()[0]
-            try: test_name = "Test {0:02d}".format(test)
-            except ValueError: test_name = test
+            try:
+                test_name = "Test {0:02d}".format(test)
+            except ValueError:
+                test_name = test
             print("{0}: {1}".format(test_name, test_info))
             try:
                 test_func(*args)
@@ -281,13 +290,19 @@ class CommandLineInterface(object):
                 time.sleep(1)
         self.test_completed = True
 
+
+    # Main method to refactor#
     def run_once(self):
         if self.options.device is None:
             self.options.device = ['usb']
-            
+
         for path in self.options.device:
             try:
-                clf = nfc.ContactlessFrontend(path)
+                clf = nfc.ContactlessFrontend("usb:001:013")
+                clf2 = nfc.ContactlessFrontend("usb:001:014")
+
+                log.info("last charater"+str(clf)[-2])
+
             except IOError as error:
                 if error.errno == errno.ENODEV:
                     log.info("no contactless reader found on " + path)
@@ -308,7 +323,7 @@ class CommandLineInterface(object):
             rdwr_options = {
                 'on-startup': self.on_rdwr_startup,
                 'on-connect': self.on_rdwr_connect,
-                }
+            }
             if self.options.technology:
                 rdwr_options["targets"] = {
                     "A": ["106A"],
@@ -317,7 +332,7 @@ class CommandLineInterface(object):
                 }[self.options.technology.upper()]
         else:
             rdwr_options = None
-        
+
         if "llcp" in self.groups:
             if self.options.mode is None:
                 self.options.role = None
@@ -340,14 +355,14 @@ class CommandLineInterface(object):
             }
         else:
             llcp_options = None
-            
+
         if "card" in self.groups:
             card_options = {
                 'on-startup': self.on_card_startup,
                 'on-connect': self.on_card_connect,
                 'on-release': self.on_card_release,
                 'targets': [],
-                }
+            }
         else:
             card_options = None
 
@@ -355,10 +370,14 @@ class CommandLineInterface(object):
             kwargs = {'llcp': llcp_options,
                       'rdwr': rdwr_options,
                       'card': card_options}
-            return clf.connect(**kwargs)
+            conn = clf.connect(**kwargs)
+            conn2 = clf2.connect(**kwargs)
+            return conn + conn2
+
         finally:
-            clf.close()
-            
+            clf.close();
+            clf2.close();
+
     def run(self):
         while self.run_once() and self.options.loop:
             log.info("*** RESTART ***")
@@ -366,7 +385,7 @@ class CommandLineInterface(object):
 
 # ColorStreamHandler for python logging framework.
 # based on: http://stackoverflow.com/questions/384076/1336640#1336640
- 
+
 # Copyright (c) 2014 Markus Pointner
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -389,75 +408,90 @@ class CommandLineInterface(object):
 
 class AnsiColorStreamHandler(logging.StreamHandler):
     DEFAULT = '\x1b[0m'
-    RED     = '\x1b[31m'
-    GREEN   = '\x1b[32m'
-    YELLOW  = '\x1b[33m'
-    BLUE    = '\x1b[34m'
-    CYAN    = '\x1b[36m'
+    RED = '\x1b[31m'
+    GREEN = '\x1b[32m'
+    YELLOW = '\x1b[33m'
+    BLUE = '\x1b[34m'
+    CYAN = '\x1b[36m'
 
     CRITICAL = RED
-    ERROR    = RED
-    WARNING  = YELLOW
-    INFO     = GREEN
-    DEBUG    = CYAN
-    VERBOSE  = BLUE
+    ERROR = RED
+    WARNING = YELLOW
+    INFO = GREEN
+    DEBUG = CYAN
+    VERBOSE = BLUE
 
     @classmethod
     def _get_color(cls, level):
-        if level >= logging.CRITICAL:  return cls.CRITICAL
-        elif level >= logging.ERROR:   return cls.ERROR
-        elif level >= logging.WARNING: return cls.WARNING
-        elif level >= logging.INFO:    return cls.INFO
-        elif level >= logging.DEBUG:   return cls.DEBUG
-        elif level >= logging.DEBUG-1: return cls.VERBOSE
-        else:                          return cls.DEFAULT
+        if level >= logging.CRITICAL:
+            return cls.CRITICAL
+        elif level >= logging.ERROR:
+            return cls.ERROR
+        elif level >= logging.WARNING:
+            return cls.WARNING
+        elif level >= logging.INFO:
+            return cls.INFO
+        elif level >= logging.DEBUG:
+            return cls.DEBUG
+        elif level >= logging.DEBUG - 1:
+            return cls.VERBOSE
+        else:
+            return cls.DEFAULT
 
     def format(self, record):
         text = logging.StreamHandler.format(self, record)
         color = self._get_color(record.levelno)
         return color + text + self.DEFAULT
 
+
 class WindowsColorStreamHandler(logging.StreamHandler):
     # wincon.h
-    FOREGROUND_BLACK     = 0x0000
-    FOREGROUND_BLUE      = 0x0001
-    FOREGROUND_GREEN     = 0x0002
-    FOREGROUND_CYAN      = 0x0003
-    FOREGROUND_RED       = 0x0004
-    FOREGROUND_MAGENTA   = 0x0005
-    FOREGROUND_YELLOW    = 0x0006
-    FOREGROUND_GREY      = 0x0007
-    FOREGROUND_INTENSITY = 0x0008 # foreground color is intensified.
-    FOREGROUND_WHITE     = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED
+    FOREGROUND_BLACK = 0x0000
+    FOREGROUND_BLUE = 0x0001
+    FOREGROUND_GREEN = 0x0002
+    FOREGROUND_CYAN = 0x0003
+    FOREGROUND_RED = 0x0004
+    FOREGROUND_MAGENTA = 0x0005
+    FOREGROUND_YELLOW = 0x0006
+    FOREGROUND_GREY = 0x0007
+    FOREGROUND_INTENSITY = 0x0008  # foreground color is intensified.
+    FOREGROUND_WHITE = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED
 
-    BACKGROUND_BLACK     = 0x0000
-    BACKGROUND_BLUE      = 0x0010
-    BACKGROUND_GREEN     = 0x0020
-    BACKGROUND_CYAN      = 0x0030
-    BACKGROUND_RED       = 0x0040
-    BACKGROUND_MAGENTA   = 0x0050
-    BACKGROUND_YELLOW    = 0x0060
-    BACKGROUND_GREY      = 0x0070
-    BACKGROUND_INTENSITY = 0x0080 # background color is intensified.
+    BACKGROUND_BLACK = 0x0000
+    BACKGROUND_BLUE = 0x0010
+    BACKGROUND_GREEN = 0x0020
+    BACKGROUND_CYAN = 0x0030
+    BACKGROUND_RED = 0x0040
+    BACKGROUND_MAGENTA = 0x0050
+    BACKGROUND_YELLOW = 0x0060
+    BACKGROUND_GREY = 0x0070
+    BACKGROUND_INTENSITY = 0x0080  # background color is intensified.
 
-    DEFAULT  = FOREGROUND_WHITE
+    DEFAULT = FOREGROUND_WHITE
     CRITICAL = BACKGROUND_YELLOW | FOREGROUND_RED | FOREGROUND_INTENSITY \
                | BACKGROUND_INTENSITY
-    ERROR    = FOREGROUND_RED | FOREGROUND_INTENSITY
-    WARNING  = FOREGROUND_YELLOW | FOREGROUND_INTENSITY
-    INFO     = FOREGROUND_GREEN
-    DEBUG    = FOREGROUND_CYAN
-    VERBOSE  = FOREGROUND_BLUE
+    ERROR = FOREGROUND_RED | FOREGROUND_INTENSITY
+    WARNING = FOREGROUND_YELLOW | FOREGROUND_INTENSITY
+    INFO = FOREGROUND_GREEN
+    DEBUG = FOREGROUND_CYAN
+    VERBOSE = FOREGROUND_BLUE
 
     @classmethod
     def _get_color(cls, level):
-        if level >= logging.CRITICAL:  return cls.CRITICAL
-        elif level >= logging.ERROR:   return cls.ERROR
-        elif level >= logging.WARNING: return cls.WARNING
-        elif level >= logging.INFO:    return cls.INFO
-        elif level >= logging.DEBUG:   return cls.DEBUG
-        elif level >= logging.DEBUG-1: return cls.VERBOSE
-        else:                          return cls.DEFAULT
+        if level >= logging.CRITICAL:
+            return cls.CRITICAL
+        elif level >= logging.ERROR:
+            return cls.ERROR
+        elif level >= logging.WARNING:
+            return cls.WARNING
+        elif level >= logging.INFO:
+            return cls.INFO
+        elif level >= logging.DEBUG:
+            return cls.DEBUG
+        elif level >= logging.DEBUG - 1:
+            return cls.VERBOSE
+        else:
+            return cls.DEFAULT
 
     def _set_color(self, code):
         import ctypes
@@ -477,8 +511,10 @@ class WindowsColorStreamHandler(logging.StreamHandler):
         logging.StreamHandler.emit(self, record)
         self._set_color(self.FOREGROUND_WHITE)
 
+
 # select ColorStreamHandler based on platform
 import platform
+
 if platform.system() == 'Windows':
     ColorStreamHandler = WindowsColorStreamHandler
 else:

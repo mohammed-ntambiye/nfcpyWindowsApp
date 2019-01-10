@@ -31,9 +31,7 @@ import string
 import struct
 import argparse
 import hmac, hashlib
-
 from cli import CommandLineInterface
-
 import nfc
 import nfc.clf
 import nfc.ndef
